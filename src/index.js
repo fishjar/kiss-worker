@@ -9,8 +9,6 @@
  */
 
 const AUTH_KEY = "X-KISS-PSK";
-const RULES_KEY = "KT_RULES";
-const SETTING_KEY = "KT_SETTING";
 
 export default {
   async fetch(request, env, ctx) {
@@ -34,49 +32,34 @@ export default {
       });
     }
 
-    const merge = async (key, data) => {
-      const { value, metadata } = await env.KV.getWithMetadata(key, {
-        type: "json",
-      });
-      // console.log("kv", value, metadata);
-      if (value && metadata?.updateAt > data.updateAt) {
-        return {
-          value,
-          updateAt: metadata.updateAt,
-        };
-      }
-
-      await env.KV.put(key, JSON.stringify(data.value), {
-        metadata: {
-          updateAt: data.updateAt,
-        },
-      });
-      return data;
-    };
-
     try {
-      const data = await request.json();
+      let data = await request.json();
       // console.log("data", data);
-      if (!(data.hasOwnProperty("value") && data.hasOwnProperty("updateAt"))) {
-        return new Response("Need value and updateAt fields.", {
+      if (!(data?.key && data?.value && data?.updateAt)) {
+        return new Response("Fields Error.", {
           status: 400,
         });
       }
 
-      let res;
-      const { pathname } = new URL(request.url);
-      switch (pathname) {
-        case "/rules":
-          res = await merge(RULES_KEY, data);
-          break;
-        case "/setting":
-          res = await merge(SETTING_KEY, data);
-          break;
-        default:
-          return new Response("Not Found.", { status: 404 });
+      const { value, metadata } = await env.KV.getWithMetadata(data.key, {
+        type: "json",
+      });
+      // console.log("kv", value, metadata);
+      if (value && metadata?.updateAt > data.updateAt) {
+        data = {
+          key: data.key,
+          value,
+          updateAt: metadata.updateAt,
+        };
+      } else {
+        await env.KV.put(data.key, JSON.stringify(data.value), {
+          metadata: {
+            updateAt: data.updateAt,
+          },
+        });
       }
 
-      return new Response(JSON.stringify(res), {
+      return new Response(JSON.stringify(data), {
         headers: {
           "content-type": "application/json;charset=UTF-8",
         },
