@@ -1,0 +1,13 @@
+{
+  "name": "kiss-worker",
+  "version": "0.0.0",
+  "author": "Gabe<yugang2002@gmail.com>",
+  "devDependencies": {
+    "wrangler": "2.12.3"
+  },
+  "private": true,
+  "scripts": {
+    "start": "wrangler dev",
+    "deploy": "wrangler publish && wrangler secret put AUTH_VALUE"
+  }
+}
