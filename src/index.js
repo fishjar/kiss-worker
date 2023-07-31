@@ -35,7 +35,13 @@ export default {
     try {
       let data = await request.json();
       // console.log("data", data);
-      if (!(data?.key && data?.value && data?.updateAt)) {
+      if (
+        !(
+          data.hasOwnProperty("key") &&
+          data.hasOwnProperty("value") &&
+          data.hasOwnProperty("updateAt")
+        )
+      ) {
         return new Response("Fields Error.", {
           status: 400,
         });
