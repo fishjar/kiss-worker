@@ -1,6 +1,6 @@
 # KISS-WORKER
 
-A simple data sync service for [KISSS-Translator](https://github.com/fishjar/kiss-translator).
+A simple data sync service for [KISS-Translator](https://github.com/fishjar/kiss-translator).
 
 ## 1、Clone repository
 
@@ -10,7 +10,9 @@ git clone https://github.com/fishjar/kiss-worker
 
 ## 2、Create a KV and replace you KV id
 
-Create a KV namespace in the dashboard by logging into the Cloudflare dashboard > select Workers & Pages > KV.
+Sign up for a [Cloudflare](https://www.cloudflare.com/) account if you don't have one.
+
+Create a KV namespace in the dashboard by logging into the [Cloudflare](https://www.cloudflare.com/) dashboard > select Workers & Pages > KV.
 
 ```toml
 # wrangler.toml
