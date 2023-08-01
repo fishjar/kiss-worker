@@ -2,13 +2,13 @@
 
 A simple data sync service for [KISSS-Translator](https://github.com/fishjar/kiss-translator).
 
-## Clone repository
+## 1、Clone repository
 
 ```sh
 git clone https://github.com/fishjar/kiss-worker
 ```
 
-## Create a KV and replace you KV id
+## 2、Create a KV and replace you KV id
 
 Create a KV namespace in the dashboard by logging into the Cloudflare dashboard > select Workers & Pages > KV.
 
@@ -19,7 +19,7 @@ kv_namespaces = [
 ]
 ```
 
-## Deploy and enter a secret value
+## 3、Deploy and enter a secret value
 
 ```sh
 yarn
