@@ -58,6 +58,9 @@ export default {
           updateAt: metadata.updateAt,
         };
       } else {
+        if (data.updateAt === 0) {
+          data.updateAt = Date.now();
+        }
         await env.KV.put(data.key, JSON.stringify(data.value), {
           metadata: {
             updateAt: data.updateAt,
