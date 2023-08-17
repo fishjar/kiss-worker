@@ -88,7 +88,7 @@ export default {
         type: "json",
       });
       // console.log("kv", value, metadata);
-      if (value && metadata?.updateAt > data.updateAt) {
+      if (value && metadata?.updateAt >= data.updateAt) {
         data = {
           key: data.key,
           value,
