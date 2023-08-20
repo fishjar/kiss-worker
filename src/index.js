@@ -8,12 +8,14 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
-const AUTH_KEY = "X-KISS-PSK";
-
 export default {
   async fetch(request, env, ctx) {
     // console.log("request", request, env);
 
+    const KV_SALT_SYNC = "KISS-Translator-SYNC";
+    const KV_SALT_SHARE = "KISS-Translator-SHARE";
+    const KV_RULES_SHARE_KEY = "KT_RULES_SHARE";
+    const { KV, AUTH_VALUE } = env;
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
@@ -45,74 +47,115 @@ export default {
       }
     }
 
-    if (request.method === "OPTIONS") {
-      // Handle CORS preflight requests
-      return handleOptions(request);
+    async function sha256(text, salt) {
+      const data = new TextEncoder().encode(text + salt);
+      const digest = await crypto.subtle.digest({ name: "SHA-256" }, data);
+      return [...new Uint8Array(digest)]
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
     }
 
-    if (request.method !== "POST") {
-      return new Response("Method Not Allowed.", {
-        status: 405,
-      });
-    }
-
-    const psk = request.headers.get(AUTH_KEY);
-    if (psk !== env.AUTH_VALUE) {
-      return new Response("Sorry, you have supplied an invalid key.", {
-        status: 403,
-      });
-    }
-
-    if (!env.AUTH_VALUE) {
+    if (!AUTH_VALUE) {
       return new Response("Must set AUTH_VALUE environment.", {
         status: 503,
       });
     }
 
-    try {
-      let data = await request.json();
-      // console.log("data", data);
-      if (
-        !(
-          data.hasOwnProperty("key") &&
-          data.hasOwnProperty("value") &&
-          data.hasOwnProperty("updateAt")
-        )
-      ) {
-        return new Response("Fields Error.", {
-          status: 400,
+    if (request.method === "OPTIONS") {
+      // Handle CORS preflight requests
+      return handleOptions(request);
+    }
+
+    if (request.method === "POST") {
+      const expectPsk = `Bearer ${await sha256(AUTH_VALUE, KV_SALT_SYNC)}`;
+      const psk = request.headers.get("Authorization");
+      if (psk !== expectPsk) {
+        return new Response("Sorry, you have supplied an invalid key.", {
+          status: 403,
         });
       }
 
-      const { value, metadata } = await env.KV.getWithMetadata(data.key, {
-        type: "json",
-      });
-      // console.log("kv", value, metadata);
-      if (value && metadata?.updateAt >= data.updateAt) {
-        data = {
-          key: data.key,
-          value,
-          updateAt: metadata.updateAt,
-        };
-      } else {
-        if (data.updateAt === 0) {
-          data.updateAt = Date.now();
+      try {
+        let data = await request.json();
+        // console.log("data", data);
+        if (
+          !(
+            data.hasOwnProperty("key") &&
+            data.hasOwnProperty("value") &&
+            data.hasOwnProperty("updateAt")
+          )
+        ) {
+          return new Response("Fields Error.", {
+            status: 400,
+          });
         }
-        await env.KV.put(data.key, JSON.stringify(data.value), {
-          metadata: {
-            updateAt: data.updateAt,
+
+        const { value, metadata } = await KV.getWithMetadata(data.key, {
+          type: "json",
+        });
+        // console.log("kv", value, metadata);
+        if (value && metadata?.updateAt >= data.updateAt) {
+          data = {
+            key: data.key,
+            value,
+            updateAt: metadata.updateAt,
+          };
+        } else {
+          if (data.updateAt === 0) {
+            data.updateAt = Date.now();
+          }
+          await KV.put(data.key, JSON.stringify(data.value), {
+            metadata: {
+              updateAt: data.updateAt,
+            },
+          });
+        }
+
+        return new Response(JSON.stringify(data), {
+          headers: {
+            ...corsHeaders,
+            "content-type": "application/json;charset=UTF-8",
           },
         });
+      } catch (err) {
+        return new Response(`Unknown Error: ${err.message}`, { status: 500 });
+      }
+    } else if (request.method === "GET") {
+      const url = new URL(request.url);
+
+      if (!url.searchParams.has("psk")) {
+        return new Response("Missing query parameter", { status: 403 });
       }
 
-      return new Response(JSON.stringify(data), {
-        headers: {
-          ...corsHeaders,
-          "content-type": "application/json;charset=UTF-8",
-        },
-      });
-    } catch (err) {
-      return new Response(`Unknown Error: ${err.message}`, { status: 500 });
+      const expectPsk = await sha256(AUTH_VALUE, KV_SALT_SHARE);
+      const psk = url.searchParams.get("psk");
+      if (psk !== expectPsk) {
+        return new Response("Sorry, you have supplied an invalid key.", {
+          status: 403,
+        });
+      }
+
+      try {
+        const { value } = await KV.getWithMetadata(KV_RULES_SHARE_KEY, {
+          type: "json",
+        });
+        if (!value) {
+          return new Response(`Empty data`, { status: 500 });
+        }
+
+        return new Response(JSON.stringify(value, null, 2), {
+          headers: {
+            ...corsHeaders,
+            "content-type": "application/json;charset=UTF-8",
+          },
+        });
+      } catch (err) {
+        return new Response(`Unknown Error: ${err.message}`, { status: 500 });
+      }
     }
+
+    return new Response("Method Not Allowed.", {
+      status: 405,
+    });
   },
 };
