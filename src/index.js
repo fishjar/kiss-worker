@@ -14,7 +14,7 @@ export default {
 
     const KV_SALT_SYNC = "KISS-Translator-SYNC";
     const KV_SALT_SHARE = "KISS-Translator-SHARE";
-    const KV_RULES_SHARE_KEY = "KT_RULES_SHARE";
+    const KV_RULES_SHARE_KEY = "kiss-rules-share.json";
     const { KV, AUTH_VALUE } = env;
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
@@ -66,7 +66,8 @@ export default {
       return handleOptions(request);
     }
 
-    if (request.method === "POST") {
+    const { pathname, searchParams } = new URL(request.url);
+    if (request.method === "POST" && pathname === "/sync") {
       const expectPsk = `Bearer ${await sha256(AUTH_VALUE, KV_SALT_SYNC)}`;
       const psk = request.headers.get("Authorization");
       if (psk !== expectPsk) {
@@ -120,15 +121,13 @@ export default {
       } catch (err) {
         return new Response(`Unknown Error: ${err.message}`, { status: 500 });
       }
-    } else if (request.method === "GET") {
-      const url = new URL(request.url);
-
-      if (!url.searchParams.has("psk")) {
+    } else if (request.method === "GET" && pathname === "/rules") {
+      if (!searchParams.has("psk")) {
         return new Response("Missing query parameter", { status: 403 });
       }
 
       const expectPsk = await sha256(AUTH_VALUE, KV_SALT_SHARE);
-      const psk = url.searchParams.get("psk");
+      const psk = searchParams.get("psk");
       if (psk !== expectPsk) {
         return new Response("Sorry, you have supplied an invalid key.", {
           status: 403,
@@ -154,8 +153,6 @@ export default {
       }
     }
 
-    return new Response("Method Not Allowed.", {
-      status: 405,
-    });
+    return new Response("Not Found", { status: 404 });
   },
 };
