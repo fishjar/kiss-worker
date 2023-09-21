@@ -16,7 +16,7 @@ import (
 
 const (
 	ENV_APP_KEY        = "APP_KEY"
-	ENV_DATA_PATH      = "DATA_PATH"
+	ENV_DATA_PATH      = "APP_DATAPATH"
 	DEFAULT_APP_KEY    = "123456"
 	DEFAULT_DATA_PATH  = "data"
 	KV_SALT_SYNC       = "KISS-Translator-SYNC"
@@ -171,10 +171,10 @@ func main() {
 }
 
 func init() {
+	log.SetPrefix("[KISS] ")
+
 	rootDir, _ := os.Getwd()
-	dataPath := getEnvValue(DEFAULT_DATA_PATH, DEFAULT_DATA_PATH)
+	dataPath := getEnvValue(ENV_DATA_PATH, DEFAULT_DATA_PATH)
 	config.dataDir = path.Join(rootDir, dataPath)
 	config.appKey = getEnvValue(ENV_APP_KEY, DEFAULT_APP_KEY)
-
-	log.SetPrefix("[KISS] ")
 }
