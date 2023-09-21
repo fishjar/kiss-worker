@@ -47,11 +47,9 @@ yarn deploy
 
 ```yml
 version: "3.1"
-
 services:
   kiss-worker:
     image: fishjar/kiss-worker
-    # build: .
     environment:
       PORT: 8080
       APP_KEY: 123456 # 修改这里的密码
