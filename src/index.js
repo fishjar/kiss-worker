@@ -91,9 +91,7 @@ export default {
           });
         }
 
-        const { value, metadata } = await KV.getWithMetadata(data.key, {
-          type: "json",
-        });
+        const { value, metadata } = await KV.getWithMetadata(data.key);
         // console.log("kv", value, metadata);
         if (value && metadata?.updateAt >= data.updateAt) {
           data = {
@@ -105,7 +103,7 @@ export default {
           if (data.updateAt === 0) {
             data.updateAt = Date.now();
           }
-          await KV.put(data.key, JSON.stringify(data.value), {
+          await KV.put(data.key, data.value, {
             metadata: {
               updateAt: data.updateAt,
             },
@@ -135,14 +133,12 @@ export default {
       }
 
       try {
-        const { value } = await KV.getWithMetadata(KV_RULES_SHARE_KEY, {
-          type: "json",
-        });
+        const { value } = await KV.getWithMetadata(KV_RULES_SHARE_KEY);
         if (!value) {
           return new Response(`Empty data`, { status: 500 });
         }
 
-        return new Response(JSON.stringify(value, null, 2), {
+        return new Response(JSON.stringify(JSON.parse(value), null, 2), {
           headers: {
             ...corsHeaders,
             "content-type": "application/json;charset=UTF-8",

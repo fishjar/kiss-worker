@@ -171,3 +171,5 @@ dist
 
 .dev.vars
 .wrangler/
+
+data
