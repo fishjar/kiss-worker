@@ -25,7 +25,7 @@ kv_namespaces = [
 ]
 ```
 
-3. Execute the following commands in sequence. When the execution is completed, you will be asked to fill in your password. You may need to connect to Cloudflare authorization when deploying for the first time.
+3. Execute the following commands in sequence. When the execution is completed, you will be asked to set your own password. You may need to connect to Cloudflare authorization when deploying for the first time.
 
 ```sh
 yarn install
