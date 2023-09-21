@@ -46,10 +46,20 @@ yarn deploy
 1、克隆项目，并修改 `docker-compose.yml` 文件，将`APP_KEY`后面的字符修改为你自己的密码。
 
 ```yml
+version: "3.1"
+
 services:
   kiss-worker:
+    image: fishjar/kiss-worker
+    # build: .
     environment:
+      PORT: 8080
       APP_KEY: 123456 # 修改这里的密码
+      APP_DATAPATH: data
+    ports:
+      - 8080:8080
+    volumes:
+      - ./data:/app/data
 ```
 
 2、执行以下命令启动

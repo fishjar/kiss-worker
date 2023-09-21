@@ -46,10 +46,20 @@ yarn deploy
 1. Clone the project and modify the `docker-compose.yml` file to change the characters after `APP_KEY` to your own password.
 
 ```yml
+version: "3.1"
+
 services:
   kiss-worker:
+    image: fishjar/kiss-worker
+    # build: .
     environment:
+      PORT: 8080
       APP_KEY: 123456 # Change password here
+      APP_DATAPATH: data
+    ports:
+      - 8080:8080
+    volumes:
+      - ./data:/app/data
 ```
 
 2. Execute the following command to start
