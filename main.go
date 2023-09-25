@@ -35,6 +35,32 @@ type kvData struct {
 	UpdateAt int64  `form:"updateAt" json:"updateAt"`
 }
 
+func loadData(key string) (*kvData, error) {
+	if err := checkDirExist(config.dataDir); err != nil {
+		return nil, err
+	}
+
+	filepath := path.Join(config.dataDir, key)
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, err
+	}
+
+	var kv kvData
+	_ = json.Unmarshal(data, &kv)
+	return &kv, nil
+}
+
+func (kv *kvData) save() error {
+	if err := checkDirExist(config.dataDir); err != nil {
+		return err
+	}
+
+	filepath := path.Join(config.dataDir, kv.Key)
+	data, _ := json.MarshalIndent(kv, "", "  ")
+	return os.WriteFile(filepath, data, 0644)
+}
+
 func getEnvValue(key string, defaultValue string) string {
 	val := os.Getenv(key)
 	if val != "" {
@@ -50,10 +76,10 @@ func calSha256(text string, salt string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func checkDirExist() error {
-	stat, err := os.Stat(config.dataDir)
+func checkDirExist(dir string) error {
+	stat, err := os.Stat(dir)
 	if os.IsNotExist(err) || !stat.IsDir() {
-		return os.MkdirAll(config.dataDir, 0700)
+		return os.MkdirAll(dir, 0700)
 	}
 	return err
 }
@@ -67,12 +93,6 @@ func handleSync(c *gin.Context) {
 		return
 	}
 
-	if err := checkDirExist(); err != nil {
-		log.Printf("check dir: %s", err)
-		c.JSON(500, gin.H{"message": "check dir err"})
-		return
-	}
-
 	var req kvData
 	if err := c.ShouldBind((&req)); err != nil {
 		log.Printf("req bind: %s", err)
@@ -80,40 +100,22 @@ func handleSync(c *gin.Context) {
 		return
 	}
 
-	filepath := path.Join(config.dataDir, req.Key)
-	stat, err := os.Stat(filepath)
-
+	res, err := loadData(req.Key)
 	if err != nil && !os.IsNotExist(err) {
-		log.Printf("check file: %s", err)
-		c.JSON(500, gin.H{"message": "check file err"})
+		log.Printf("load data: %s", err)
+		c.JSON(500, gin.H{"message": "load data err"})
 		return
-	}
-
-	if err == nil && !stat.IsDir() {
-		data, err := os.ReadFile(filepath)
-		if err != nil {
-			log.Printf("read file: %s", err)
-			c.JSON(500, gin.H{"message": "read file err"})
-			return
-		}
-
-		var res kvData
-		_ = json.Unmarshal(data, &res)
-
-		if res.UpdateAt >= req.UpdateAt {
-			c.JSON(200, res)
-			return
-		}
+	} else if err == nil && res.UpdateAt >= req.UpdateAt {
+		c.JSON(200, res)
+		return
 	}
 
 	if req.UpdateAt == 0 {
 		req.UpdateAt = time.Now().Unix()
 	}
-
-	data, _ := json.MarshalIndent(req, "", "  ")
-	if err := os.WriteFile(filepath, data, 0666); err != nil {
-		log.Printf("write file: %s", err)
-		c.JSON(500, gin.H{"message": "write file err"})
+	if err := req.save(); err != nil {
+		log.Printf("save data: %s", err)
+		c.JSON(500, gin.H{"message": "save data err"})
 		return
 	}
 
@@ -129,32 +131,15 @@ func handleRules(c *gin.Context) {
 		return
 	}
 
-	if err := checkDirExist(); err != nil {
-		log.Printf("check dir: %s", err)
-		c.JSON(500, gin.H{"message": "check dir err"})
-		return
-	}
-
-	filepath := path.Join(config.dataDir, KV_RULES_SHARE_KEY)
-	stat, err := os.Stat(filepath)
-	if os.IsNotExist(err) || stat.IsDir() {
+	res, err := loadData(KV_RULES_SHARE_KEY)
+	if os.IsNotExist(err) {
 		c.JSON(404, gin.H{"message": "not found"})
 		return
 	} else if err != nil {
-		log.Printf("stat file: %s", err)
-		c.JSON(500, gin.H{"message": "stat file err"})
+		log.Printf("load data: %s", err)
+		c.JSON(500, gin.H{"message": "load data err"})
 		return
 	}
-
-	data, err := os.ReadFile(filepath)
-	if err != nil {
-		log.Printf("read file: %s", err)
-		c.JSON(500, gin.H{"message": "read file err"})
-		return
-	}
-
-	var res kvData
-	_ = json.Unmarshal(data, &res)
 
 	c.Data(200, "application/json; charset=utf-8", []byte(res.Value))
 }
