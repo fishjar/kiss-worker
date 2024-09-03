@@ -1,0 +1,35 @@
+name: Cloudflare Worker
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+  repository_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20.x' 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Build
+        run: yarn install && yarn build
+
+      - name: Publish
+        uses: cloudflare/wrangler-action@3.0.0
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
