@@ -8,6 +8,7 @@
   "private": true,
   "scripts": {
     "start": "wrangler dev",
+    "build": "wrangler build",
     "publish": "wrangler publish",
     "deploy": "wrangler publish && wrangler secret put AUTH_VALUE"
   }
