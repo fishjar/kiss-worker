@@ -7,11 +7,14 @@
  * 同名记录，因此现有 Worker 可以原地升级，无需客户端更换地址或重新上传数据。
  */
 import { DurableObject } from "cloudflare:workers";
+import { mirrorWords } from "./mirror.js";
 
 // 固定盐、分享记录 key 均属于已发布客户端协议，修改会使现有密钥或分享链接失效。
 const KV_SALT_SYNC = "KISS-Translator-SYNC";
 const KV_SALT_SHARE = "KISS-Translator-SHARE";
 const KV_RULES_SHARE_KEY = "kiss-rules-share.json";
+// KISS-Translator 生词本同步键；命中该键时触发 TypeWords 镜像。
+const KV_WORDS_KEY = "kiss-words.json";
 
 // 每个 Durable Object 只管理一个业务 key，因此对象存储中使用固定内部键即可。
 const RECORD_STORAGE_KEY = "record";
@@ -241,7 +244,7 @@ export class SyncObject extends DurableObject {
  * 捕获异常时返回固定错误文本，避免将 KV、对象存储或运行时内部信息暴露给客户端。
  */
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     // AUTH_VALUE 是部署必需的 Secret；缺失时拒绝提供一个看似可用但无法鉴权的服务。
     if (!env.AUTH_VALUE) {
       return new Response("Must set AUTH_VALUE environment.", { status: 503 });
@@ -271,7 +274,12 @@ export default {
         if (!response.ok) {
           return new Response("Fields Error.", { status: response.status });
         }
-        return jsonResponse(await response.json());
+        const record = await response.json();
+        // 生词本同步成功后，异步镜像到 TypeWords（Supabase），不阻塞客户端响应。
+        if (data.key === KV_WORDS_KEY && ctx?.waitUntil) {
+          ctx.waitUntil(mirrorWords(env, record.value));
+        }
+        return jsonResponse(record);
       } catch {
         return new Response("Unknown Error", { status: 500 });
       }
